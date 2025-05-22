@@ -6,9 +6,9 @@ import { Residentes } from './views/residentes'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { NuevoResidente } from './components/agregar'
 import { EditarResidente } from './components/editar'
+import { SubirImagen } from './components/imagen'
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <Router>
@@ -16,6 +16,7 @@ function App() {
         <Route path="/" element={<Residentes />} />
         <Route path="/agregar" element={<NuevoResidente />} />
         <Route path="/editar/:id" element={<EditarResidente />} />
+        <Route path="/imagen" element={<SubirImagen />} />
       </Routes>
     </Router>
   )

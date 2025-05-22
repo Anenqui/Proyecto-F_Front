@@ -113,6 +113,7 @@ function handleDelete(id) {
         <table className="min-w-full bg-white border border-gray-300 rounded-md shadow-sm">
           <thead className="bg-gray-100">
             <tr>
+              <th className="py-3 px-6 text-left font-medium text-gray-700 border-b border-gray-300">ID</th>
               <th className="py-3 px-6 text-left font-medium text-gray-700 border-b border-gray-300">Nombre</th>
               <th className="py-3 px-6 text-left font-medium text-gray-700 border-b border-gray-300">Apellido</th>
               <th className="py-3 px-6 text-left font-medium text-gray-700 border-b border-gray-300">Correo</th>
@@ -130,6 +131,7 @@ function handleDelete(id) {
                   key={r.id}
                   className="even:bg-gray-50 hover:bg-gray-100 transition-colors duration-150"
                 >
+                  <td className="py-3 px-6 border-b border-gray-200">{r.id}</td>
                   <td className="py-3 px-6 border-b border-gray-200">{r.nombre}</td>
                   <td className="py-3 px-6 border-b border-gray-200">{r.apellido}</td>
                   <td className="py-3 px-6 border-b border-gray-200">{r.correo_electronico}</td>
@@ -229,6 +231,13 @@ function handleDelete(id) {
         className="mb-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
   Agregar nuevo residente
 </button>
+<br></br>
+        <button
+        onClick={() => navigate('/imagen')}
+        className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+        >
+          Subir Imagen
+        </button>
     </div>
   )
 }
