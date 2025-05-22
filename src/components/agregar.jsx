@@ -1,120 +1,103 @@
-import React, { useState } from 'react'
+import React from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
+import { useForm, Controller } from 'react-hook-form'
+import { yupResolver } from '@hookform/resolvers/yup'
+import * as yup from 'yup'
+
+const lenguajesIniciales = {
+  JavaScript: false,
+  Python: false,
+  'C++': false,
+  Java: false,
+  PHP: false,
+  HTML: false,
+  CSS: false,
+  Dart: false,
+}
+
+// Validación Yup
+const soloLetrasRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/
+const schema = yup.object().shape({
+  nombre: yup
+    .string()
+    .required('El nombre es requerido')
+    .matches(soloLetrasRegex, 'El nombre solo puede contener letras y espacios'),
+  apellido: yup
+    .string()
+    .required('El apellido es requerido')
+    .matches(soloLetrasRegex, 'El apellido solo puede contener letras y espacios'),
+  genero: yup.string().required('Selecciona un género'),
+   fecha_nacimiento: yup
+    .string()
+    .required('Fecha de nacimiento es requerida')
+    .max(10, 'La fecha no debe tener más de 10 caracteres')
+    .test(
+      'fecha-valida',
+      'Fecha inválida o mayor al día de hoy',
+      value => {
+        if (!value) return false
+        const fechaInput = new Date(value)
+        const hoy = new Date()
+        return fechaInput <= hoy && value.length === 10
+      }
+    ),
+  telefono: yup
+    .string()
+    .required('Teléfono es requerido')
+    .matches(/^\d{10}$/, 'Teléfono debe tener 10 dígitos'),
+  correo_electronico: yup.string().required('Correo es requerido').email('Correo inválido'),
+  instituto_procedencia: yup.string().required('Instituto es requerido'),
+  carrera: yup.string().required('Selecciona una carrera'),
+  lenguajes_programacion: yup.object().test(
+    'checkLenguajes',
+    'Selecciona al menos un lenguaje de programación',
+    (value) => Object.values(value).some(Boolean)
+  ),
+  notas: yup.string(),
+})
 
 export function NuevoResidente() {
-  const lenguajesIniciales = {
-    JavaScript: false,
-    Python: false,
-    'C++': false,
-    Java: false,
-    PHP: false,
-    HTML: false,
-    CSS: false,
-    Dart: false
-  }
-
   const navigate = useNavigate()
 
-  const formInicial = {
-    nombre: '',
-    apellido: '',
-    genero: '',
-    fecha_nacimiento: '',
-    telefono: '',
-    correo_electronico: '',
-    instituto_procedencia: '',
-    carrera: '',
-    lenguajes_programacion: { ...lenguajesIniciales },
-    notas: '',
-  }
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      nombre: '',
+      apellido: '',
+      genero: '',
+      fecha_nacimiento: '',
+      telefono: '',
+      correo_electronico: '',
+      instituto_procedencia: '',
+      carrera: '',
+      lenguajes_programacion: { ...lenguajesIniciales },
+      notas: '',
+    },
+    resolver: yupResolver(schema),
+  })
 
-  const [form, setForm] = useState(formInicial)
-  const [errors, setErrors] = useState({})
-
-  function validarTelefono(tel) {
-    return /^\d{10}$/.test(tel)
-  }
-
-  function validarFecha(fecha) {
-    if (!fecha) return false
-    const hoy = new Date()
-    const fechaInput = new Date(fecha)
-    return fechaInput <= hoy
-  }
-
-  function handleChange(e) {
-    const { name, value, type, checked } = e.target
-
-    if (name in form.lenguajes_programacion) {
-      setForm(prev => ({
-        ...prev,
-        lenguajes_programacion: {
-          ...prev.lenguajes_programacion,
-          [name]: checked,
-        },
-      }))
-    } else {
-      setForm(prev => ({
-        ...prev,
-        [name]: value,
-      }))
-    }
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault()
-
-    const newErrors = {}
-    if (!form.nombre.trim()) newErrors.nombre = 'El nombre es requerido'
-    if (!form.apellido.trim()) newErrors.apellido = 'El apellido es requerido'
-    if (!form.genero) newErrors.genero = 'Selecciona un género'
-    if (!validarFecha(form.fecha_nacimiento))
-      newErrors.fecha_nacimiento = 'Fecha inválida o mayor al día de hoy'
-    if (!validarTelefono(form.telefono))
-      newErrors.telefono = 'Teléfono debe tener 10 dígitos'
-    if (!form.correo_electronico.trim())
-      newErrors.correo_electronico = 'Correo es requerido'
-    if (!form.instituto_procedencia.trim())
-      newErrors.instituto_procedencia = 'Instituto es requerido'
-    if (!form.carrera) newErrors.carrera = 'Selecciona una carrera'
-
-    setErrors(newErrors)
-
-    if (Object.keys(newErrors).length === 0) {
-      axios
-        .post('http://localhost:3030/api/residentes', {
-          nombre: form.nombre,
-          apellido: form.apellido,
-          genero: form.genero,
-          fecha_nacimiento: form.fecha_nacimiento,
-          telefono: form.telefono,
-          correo_electronico: form.correo_electronico,
-          instituto_procedencia: form.instituto_procedencia,
-          carrera: form.carrera,
-          lenguajes_programacion: form.lenguajes_programacion,
-          notas: form.notas,
-        })
-        .then(() => {
-          alert('Residente creado correctamente')
-          navigate('/')
-        })
-        .catch(error => {
-          console.error('Error response data:', error.response?.data)
-          if (error.response?.data?.data) {
-            console.error(
-              'Detalles de validación:',
-              JSON.stringify(error.response.data.data, null, 2)
-            )
-          }
-          alert('Error: ' + (error.response?.data?.message || error.message))
-        })
+  const onSubmit = async (data) => {
+    try {
+      await axios.post('http://localhost:3030/api/residentes', data)
+      alert('Residente creado correctamente')
+      navigate('/')
+    } catch (error) {
+      console.error('Error response data:', error.response?.data)
+      if (error.response?.data?.data) {
+        console.error('Detalles de validación:', JSON.stringify(error.response.data.data, null, 2))
+      }
+      alert('Error: ' + (error.response?.data?.message || error.message))
     }
   }
 
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white shadow-md rounded">
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit(onSubmit)}>
         {/* Nombre */}
         <div className="mb-4">
           <label htmlFor="nombre" className="block font-medium mb-1">
@@ -123,14 +106,12 @@ export function NuevoResidente() {
           <input
             type="text"
             id="nombre"
-            name="nombre"
-            value={form.nombre}
-            onChange={handleChange}
+            {...register('nombre')}
             className={`w-full border rounded px-3 py-2 ${
               errors.nombre ? 'border-red-500' : 'border-gray-300'
             }`}
           />
-          {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre}</p>}
+          {errors.nombre && <p className="text-red-500 text-sm mt-1">{errors.nombre.message}</p>}
         </div>
 
         {/* Apellido */}
@@ -141,14 +122,12 @@ export function NuevoResidente() {
           <input
             type="text"
             id="apellido"
-            name="apellido"
-            value={form.apellido}
-            onChange={handleChange}
+            {...register('apellido')}
             className={`w-full border rounded px-3 py-2 ${
               errors.apellido ? 'border-red-500' : 'border-gray-300'
             }`}
           />
-          {errors.apellido && <p className="text-red-500 text-sm mt-1">{errors.apellido}</p>}
+          {errors.apellido && <p className="text-red-500 text-sm mt-1">{errors.apellido.message}</p>}
         </div>
 
         {/* Género */}
@@ -157,10 +136,8 @@ export function NuevoResidente() {
           <label className="inline-flex items-center mr-6">
             <input
               type="radio"
-              name="genero"
               value="masculino"
-              checked={form.genero === 'masculino'}
-              onChange={handleChange}
+              {...register('genero')}
               className="form-radio"
             />
             <span className="ml-2">Masculino</span>
@@ -168,15 +145,13 @@ export function NuevoResidente() {
           <label className="inline-flex items-center">
             <input
               type="radio"
-              name="genero"
               value="femenino"
-              checked={form.genero === 'femenino'}
-              onChange={handleChange}
+              {...register('genero')}
               className="form-radio"
             />
             <span className="ml-2">Femenino</span>
           </label>
-          {errors.genero && <p className="text-red-500 text-sm mt-1">{errors.genero}</p>}
+          {errors.genero && <p className="text-red-500 text-sm mt-1">{errors.genero.message}</p>}
         </div>
 
         {/* Fecha de nacimiento */}
@@ -187,16 +162,14 @@ export function NuevoResidente() {
           <input
             type="date"
             id="fecha_nacimiento"
-            name="fecha_nacimiento"
             max={new Date().toISOString().split('T')[0]}
-            value={form.fecha_nacimiento}
-            onChange={handleChange}
+            {...register('fecha_nacimiento')}
             className={`w-full border rounded px-3 py-2 ${
               errors.fecha_nacimiento ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.fecha_nacimiento && (
-            <p className="text-red-500 text-sm mt-1">{errors.fecha_nacimiento}</p>
+            <p className="text-red-500 text-sm mt-1">{errors.fecha_nacimiento.message}</p>
           )}
         </div>
 
@@ -208,16 +181,14 @@ export function NuevoResidente() {
           <input
             type="tel"
             id="telefono"
-            name="telefono"
-            value={form.telefono}
-            onChange={handleChange}
             maxLength={10}
             placeholder="10 dígitos"
+            {...register('telefono')}
             className={`w-full border rounded px-3 py-2 ${
               errors.telefono ? 'border-red-500' : 'border-gray-300'
             }`}
           />
-          {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono}</p>}
+          {errors.telefono && <p className="text-red-500 text-sm mt-1">{errors.telefono.message}</p>}
         </div>
 
         {/* Correo electrónico */}
@@ -228,17 +199,16 @@ export function NuevoResidente() {
           <input
             type="email"
             id="correo_electronico"
-            name="correo_electronico"
-            value={form.correo_electronico}
-            onChange={handleChange}
+            {...register('correo_electronico')}
             className={`w-full border rounded px-3 py-2 ${
               errors.correo_electronico ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.correo_electronico && (
-            <p className="text-red-500 text-sm mt-1">{errors.correo_electronico}</p>
+            <p className="text-red-500 text-sm mt-1">{errors.correo_electronico.message}</p>
           )}
         </div>
+        
 
         {/* Instituto de procedencia */}
         <div className="mb-4">
@@ -248,15 +218,13 @@ export function NuevoResidente() {
           <input
             type="text"
             id="instituto_procedencia"
-            name="instituto_procedencia"
-            value={form.instituto_procedencia}
-            onChange={handleChange}
+            {...register('instituto_procedencia')}
             className={`w-full border rounded px-3 py-2 ${
               errors.instituto_procedencia ? 'border-red-500' : 'border-gray-300'
             }`}
           />
           {errors.instituto_procedencia && (
-            <p className="text-red-500 text-sm mt-1">{errors.instituto_procedencia}</p>
+            <p className="text-red-500 text-sm mt-1">{errors.instituto_procedencia.message}</p>
           )}
         </div>
 
@@ -266,10 +234,8 @@ export function NuevoResidente() {
             Carrera
           </label>
           <select
-            name="carrera"
-            value={form.carrera}
-            onChange={handleChange}
-            required
+            id="carrera"
+            {...register('carrera')}
             className={`w-full border rounded px-3 py-2 ${
               errors.carrera ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -283,26 +249,34 @@ export function NuevoResidente() {
             <option value="Ingeniería en Computación">Ingeniería en Computación</option>
             <option value="Otra carrera">Otra carrera</option>
           </select>
-          {errors.carrera && <p className="text-red-500 text-sm mt-1">{errors.carrera}</p>}
+          {errors.carrera && <p className="text-red-500 text-sm mt-1">{errors.carrera.message}</p>}
         </div>
 
         {/* Lenguajes de programación */}
         <div className="mb-4">
           <label className="block font-medium mb-2">Lenguajes de programación</label>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-            {Object.keys(form.lenguajes_programacion).map(lang => (
+            {Object.keys(lenguajesIniciales).map((lang) => (
               <label key={lang} className="inline-flex items-center">
-                <input
-                  type="checkbox"
-                  name={lang}
-                  checked={form.lenguajes_programacion[lang]}
-                  onChange={handleChange}
-                  className="form-checkbox"
+                <Controller
+                  name={`lenguajes_programacion.${lang}`}
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      type="checkbox"
+                      {...field}
+                      checked={field.value}
+                      className="form-checkbox"
+                    />
+                  )}
                 />
                 <span className="ml-2">{lang}</span>
               </label>
             ))}
           </div>
+          {errors.lenguajes_programacion && (
+            <p className="text-red-500 text-sm mt-1">{errors.lenguajes_programacion.message}</p>
+          )}
         </div>
 
         {/* Notas */}
@@ -312,10 +286,8 @@ export function NuevoResidente() {
           </label>
           <textarea
             id="notas"
-            name="notas"
             rows="4"
-            value={form.notas}
-            onChange={handleChange}
+            {...register('notas')}
             className="w-full border border-gray-300 rounded px-3 py-2"
           />
         </div>

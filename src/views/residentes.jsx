@@ -3,7 +3,7 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEye, faEdit, faTrash, faTimes } from '@fortawesome/free-solid-svg-icons'
-
+import Swal from 'sweetalert2'
 
 export function Residentes() {
     const navigate = useNavigate()
@@ -23,21 +23,76 @@ export function Residentes() {
         setLoading(false)
       })
   }, [])
-function handleDelete(id) {
-  const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar este residente? Esta acción no se puede deshacer.');
+// function handleDelete(id) {
+//   const confirmDelete = window.confirm('¿Estás seguro de que deseas eliminar este residente? Esta acción no se puede deshacer.');
 
-  if (confirmDelete) {
-    axios.delete(`http://localhost:3030/api/residentes/${id}`)
-      .then(() => {
-        setResidentes(prev => prev.filter(r => r.id !== id))
-        alert('Residente eliminado correctamente.')
-      })
-      .catch(error => {
-        console.error('Error al eliminar residente:', error)
-        alert('Hubo un error al intentar eliminar al residente.')
-      })
-  }
+//   if (confirmDelete) {
+//     axios.delete(`http://localhost:3030/api/residentes/${id}`)
+//       .then(() => {
+//         setResidentes(prev => prev.filter(r => r.id !== id))
+//         alert('Residente eliminado correctamente.')
+//       })
+//       .catch(error => {
+//         console.error('Error al eliminar residente:', error)
+//         alert('Hubo un error al intentar eliminar al residente.')
+//       })
+//   }
+// }
+function handleDelete(id) {
+  Swal.fire({
+    title: '¿Estás seguro?',
+    text: 'Esta acción no se puede deshacer.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#e3342f',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Sí, eliminar',
+    cancelButtonText: 'Cancelar',
+    backdrop: true,
+    customClass: {
+      popup: 'rounded-xl'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      axios.delete(`http://localhost:3030/api/residentes/${id}`)
+        .then(() => {
+          setResidentes(prev => prev.filter(r => r.id !== id))
+
+          Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: 'success',
+            title: 'Residente eliminado correctamente',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            background: '#f0fdf4',
+            iconColor: '#16a34a',
+            customClass: {
+              popup: 'rounded-lg shadow-lg'
+            },
+            didOpen: (toast) => {
+              toast.addEventListener('mouseenter', Swal.stopTimer)
+              toast.addEventListener('mouseleave', Swal.resumeTimer)
+            }
+          })
+        })
+        .catch(error => {
+          console.error('Error al eliminar residente:', error)
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Hubo un problema al eliminar el residente.',
+            confirmButtonColor: '#e3342f',
+            customClass: {
+              popup: 'rounded-xl'
+            }
+          })
+        })
+    }
+  })
 }
+
 
   function openModal(residente) {
     setSelectedResidente(residente)
@@ -87,11 +142,13 @@ function handleDelete(id) {
                       <FontAwesomeIcon icon={faEye} />
                     </button>
                     <button
-                      title="Editar"
-                      className="text-yellow-500 hover:text-yellow-700 focus:outline-none"
-                    >
-                      <FontAwesomeIcon icon={faEdit} />
-                    </button>
+                        title="Editar"
+                        onClick={() => navigate(`/editar/${r.id}`)}
+                        className="text-yellow-500 hover:text-yellow-700 focus:outline-none"
+                        >
+                        <FontAwesomeIcon icon={faEdit} />
+                        </button>
+
                     <button
                         title="Borrar"
                         onClick={() => handleDelete(r.id)}
@@ -168,9 +225,8 @@ function handleDelete(id) {
       )}
       <br></br>
       <button
-  onClick={() => navigate('/agregar')}
-  className="mb-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
->
+        onClick={() => navigate('/agregar')}
+        className="mb-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors">
   Agregar nuevo residente
 </button>
     </div>
