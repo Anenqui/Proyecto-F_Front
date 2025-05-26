@@ -15,8 +15,6 @@ const lenguajesIniciales = {
   CSS: false,
   Dart: false,
 }
-
-// Validación Yup
 const soloLetrasRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/
 const schema = yup.object().shape({
   nombre: yup
@@ -57,9 +55,20 @@ const schema = yup.object().shape({
   notas: yup.string(),
 })
 
+
 export function NuevoResidente() {
   const navigate = useNavigate()
+  const [imagen, setImagen] = React.useState(null)
+  const [vistaPrevia, setVistaPrevia] = React.useState(null)
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setImagen(file)
+      setVistaPrevia(URL.createObjectURL(file))
+    }
+  }
+  
   const {
     register,
     handleSubmit,
@@ -81,19 +90,40 @@ export function NuevoResidente() {
     resolver: yupResolver(schema),
   })
 
-  const onSubmit = async (data) => {
-    try {
-      await axios.post('http://localhost:3030/api/residentes', data)
-      alert('Residente creado correctamente')
-      navigate('/')
-    } catch (error) {
-      console.error('Error response data:', error.response?.data)
-      if (error.response?.data?.data) {
-        console.error('Detalles de validación:', JSON.stringify(error.response.data.data, null, 2))
-      }
-      alert('Error: ' + (error.response?.data?.message || error.message))
+const onSubmit = async (data) => {
+  try {
+    let fotoUrl = null;
+
+    if (imagen instanceof File) {
+      const formData = new FormData();
+      formData.append('foto', imagen);
+
+      const response = await axios.post('http://localhost:3030/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      fotoUrl = `http://localhost:3030${response.data.url}`;
     }
+
+    const residenteData = {
+      ...data,
+      lenguajes_programacion: JSON.stringify(data.lenguajes_programacion), 
+      foto: fotoUrl,
+    };
+    console.log('Datos que se enviarán al backend:', residenteData);
+    await axios.post('http://localhost:3030/api/residentes', residenteData);
+    alert('Residente creado correctamente');
+    navigate('/');
+  } catch (error) {
+  console.error('Error al crear residente:', error);
+  if (error.response) {
+    console.error('Respuesta del servidor:', error.response.data);
+    alert('Error al crear residente: ' + (error.response.data.message || JSON.stringify(error.response.data)));
+  } else {
+    alert('Error al crear residente: ' + error.message);
   }
+}
+}
 
   return (
     <div className="max-w-2xl mx-auto p-4 bg-white shadow-md rounded">
@@ -129,6 +159,8 @@ export function NuevoResidente() {
           />
           {errors.apellido && <p className="text-red-500 text-sm mt-1">{errors.apellido.message}</p>}
         </div>
+
+        
 
         {/* Género */}
         <div className="mb-4">
@@ -209,6 +241,28 @@ export function NuevoResidente() {
           )}
         </div>
         
+        {/* Subir Imagen */}
+        <div className="mb-4">
+          <label className="block font-medium mb-1">Foto del residente</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+        {/* Vista previa */}
+        {vistaPrevia && (
+          <div className="mb-4">
+            <p className="text-sm mb-1">Vista previa:</p>
+            <img
+              src={vistaPrevia}
+              alt="Vista previa"
+              className="max-w-xs h-auto border rounded"
+            />
+          </div>
+        )}
+
 
         {/* Instituto de procedencia */}
         <div className="mb-4">

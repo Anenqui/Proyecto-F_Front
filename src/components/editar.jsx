@@ -32,6 +32,9 @@ export function EditarResidente() {
 
   const [form, setForm] = useState(formInicial)
   const [errors, setErrors] = useState({})
+  const [residente, setResidente] = useState(null)
+  const [imagen, setImagen] = useState(null)
+  const [vistaPrevia, setVistaPrevia] = useState(null)
 
   useEffect(() => {
     axios
@@ -46,6 +49,7 @@ export function EditarResidente() {
             ...data.lenguajes_programacion,
           },
         })
+        setResidente(data)
       })
       .catch((err) => {
         alert('No se pudo cargar el residente')
@@ -68,7 +72,6 @@ export function EditarResidente() {
   }
 
   function validarCorreo(email) {
-    // Regex simple para email válido
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
   }
 
@@ -95,12 +98,21 @@ export function EditarResidente() {
     }
   }
 
-  function handleSubmit(e) {
+  function handleFileChange(e) {
+    const file = e.target.files[0]
+    if (file) {
+      setImagen(file)
+      const reader = new FileReader()
+      reader.onloadend = () => setVistaPrevia(reader.result)
+      reader.readAsDataURL(file)
+    }
+  }
+
+  async function handleSubmit(e) {
     e.preventDefault()
 
     const newErrors = {}
 
-    // Nombre y apellido
     if (!form.nombre.trim()) newErrors.nombre = 'El nombre es requerido'
     else if (!soloLetrasRegex.test(form.nombre))
       newErrors.nombre = 'El nombre solo puede contener letras y espacios'
@@ -109,49 +121,65 @@ export function EditarResidente() {
     else if (!soloLetrasRegex.test(form.apellido))
       newErrors.apellido = 'El apellido solo puede contener letras y espacios'
 
-    // Género
     if (!form.genero) newErrors.genero = 'Selecciona un género'
 
-    // Fecha de nacimiento
     if (!form.fecha_nacimiento) newErrors.fecha_nacimiento = 'Fecha de nacimiento es requerida'
     else if (!validarFecha(form.fecha_nacimiento))
       newErrors.fecha_nacimiento = 'Fecha inválida o mayor al día de hoy'
 
-    // Teléfono
     if (!form.telefono.trim()) newErrors.telefono = 'Teléfono es requerido'
     else if (!validarTelefono(form.telefono))
       newErrors.telefono = 'Teléfono debe tener 10 dígitos'
 
-    // Correo electrónico
     if (!form.correo_electronico.trim()) newErrors.correo_electronico = 'Correo es requerido'
     else if (!validarCorreo(form.correo_electronico))
       newErrors.correo_electronico = 'Correo inválido'
 
-    // Instituto procedencia
     if (!form.instituto_procedencia.trim())
       newErrors.instituto_procedencia = 'Instituto es requerido'
 
-    // Carrera
     if (!form.carrera) newErrors.carrera = 'Selecciona una carrera'
 
-    // Lenguajes de programación
     if (!validarLenguajes(form.lenguajes_programacion))
       newErrors.lenguajes_programacion = 'Selecciona al menos un lenguaje de programación'
 
     setErrors(newErrors)
 
     if (Object.keys(newErrors).length === 0) {
-      axios
-        .patch(`http://localhost:3030/api/residentes/${id}`, form)
-        .then(() => {
-          alert('Residente actualizado correctamente')
-          navigate('/')
-        })
-        .catch((error) => {
-          console.error('Error al actualizar:', error.response?.data)
-          alert('Error al actualizar: ' + (error.response?.data?.message || error.message))
-        })
+  try {
+    let fotoUrl = residente?.foto || null;
+
+    if (imagen) {
+      const formData = new FormData();
+      formData.append('foto', imagen);
+
+      const uploadRes = await axios.post('http://localhost:3030/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      fotoUrl = `http://localhost:3030${uploadRes.data.url}`;
     }
+
+    const updatedData = {
+      ...form,
+      lenguajes_programacion: JSON.stringify(form.lenguajes_programacion),
+      foto: fotoUrl,
+    };
+    delete updatedData.id;
+    delete updatedData.imagen;
+
+    console.log('Datos a actualizar:', updatedData);
+
+    await axios.patch(`http://localhost:3030/api/residentes/${id}`, updatedData);
+
+    alert('Residente actualizado correctamente');
+    navigate('/');
+  } catch (error) {
+    console.error('Error al actualizar:', error.response?.data);
+    alert('Error al actualizar: ' + (error.response?.data?.message || error.message));
+  }
+}
+
   }
 
   return (
@@ -159,6 +187,7 @@ export function EditarResidente() {
       <form onSubmit={handleSubmit}>
         <h2 className="text-xl font-bold mb-4">Editar Residente</h2>
 
+        
         {/* Nombre */}
         <div className="mb-4">
           <label htmlFor="nombre" className="block font-medium mb-1">
@@ -323,7 +352,6 @@ export function EditarResidente() {
             <option value="II">Ingeniería Industrial</option>
             <option value="IM">Ingeniería Mecatrónica</option>
             <option value="IE">Ingeniería en Electrónica</option>
-            {/* agrega las demás opciones que necesites */}
           </select>
           {errors.carrera && <p className="text-red-500 text-sm mt-1">{errors.carrera}</p>}
         </div>
@@ -365,6 +393,30 @@ export function EditarResidente() {
           />
         </div>
 
+        {/* Subir Imagen (Edición) */}
+        <div className="mb-4">
+          <label className="block font-medium mb-1">Foto del residente</label>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            className="w-full border p-2 rounded"
+          />
+        </div>
+
+      {/* Vista previa de imagen actual o nueva */}
+      {(vistaPrevia || residente?.foto) && (
+        <div className="mb-4">
+          <p className="text-sm mb-1">Vista previa:</p>
+          <img
+            src={vistaPrevia || residente.foto}
+            alt="Vista previa"
+            className="max-w-xs h-auto border rounded"
+          />
+        </div>
+      )}
+
+        {/* Botón */}
         <button
           type="submit"
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"

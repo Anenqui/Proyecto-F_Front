@@ -232,12 +232,12 @@ function handleDelete(id) {
   Agregar nuevo residente
 </button>
 <br></br>
-        <button
+        {/* <button
         onClick={() => navigate('/imagen')}
         className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
         >
           Subir Imagen
-        </button>
+        </button> */}
     </div>
   )
 }
